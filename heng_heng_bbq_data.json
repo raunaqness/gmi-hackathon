@@ -1,0 +1,436 @@
+{
+  "stall_name": "HENG HENG BBQ",
+  "address": "#01-30",
+  "cuisine_type": "seafood",
+  "description": "Hawker stall menu offering BBQ items, seafood, and drinks.",
+  "dishes": [
+    {
+      "name": "Grilled Lobster",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$9/100g"
+        }
+      ]
+    },
+    {
+      "name": "Tiger Prawn (1pc)",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$18"
+        },
+        {
+          "label": "Medium",
+          "price": "$20"
+        },
+        {
+          "label": "Large",
+          "price": "$24"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$28"
+        }
+      ]
+    },
+    {
+      "name": "Crayfish (2pcs)",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$25"
+        },
+        {
+          "label": "Large",
+          "price": "$30"
+        }
+      ]
+    },
+    {
+      "name": "Chilli Crab",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$46"
+        },
+        {
+          "label": "Medium",
+          "price": "$50"
+        },
+        {
+          "label": "Large",
+          "price": "$54"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$58"
+        }
+      ]
+    },
+    {
+      "name": "Black Pepper Crab",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$46"
+        },
+        {
+          "label": "Medium",
+          "price": "$50"
+        },
+        {
+          "label": "Large",
+          "price": "$54"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$58"
+        }
+      ]
+    },
+    {
+      "name": "Salted Egg Crab",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$50"
+        },
+        {
+          "label": "Medium",
+          "price": "$54"
+        },
+        {
+          "label": "Large",
+          "price": "$58"
+        }
+      ]
+    },
+    {
+      "name": "Cereal Prawn",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$25"
+        },
+        {
+          "label": "Medium",
+          "price": "$30"
+        },
+        {
+          "label": "Large",
+          "price": "$35"
+        }
+      ]
+    },
+    {
+      "name": "Butter Prawn",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$25"
+        },
+        {
+          "label": "Medium",
+          "price": "$30"
+        },
+        {
+          "label": "Large",
+          "price": "$35"
+        }
+      ]
+    },
+    {
+      "name": "Sambal Prawn",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$25"
+        },
+        {
+          "label": "Medium",
+          "price": "$30"
+        },
+        {
+          "label": "Large",
+          "price": "$35"
+        }
+      ]
+    },
+    {
+      "name": "Steamed Fish",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$42"
+        },
+        {
+          "label": "Large",
+          "price": "$46"
+        }
+      ]
+    },
+    {
+      "name": "Steamed Red Grouper",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$46"
+        },
+        {
+          "label": "Large",
+          "price": "$50"
+        }
+      ]
+    },
+    {
+      "name": "Satay",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$1.00 each (Min. 10 Sticks)"
+        }
+      ]
+    },
+    {
+      "name": "Tiger Prawn",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "BBQ Stingray",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "Chilli Crab",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "Grilled Lobster",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "Sugarcane Juice",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.00"
+        }
+      ]
+    },
+    {
+      "name": "Sugarcane Juice w Lemon",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.50"
+        }
+      ]
+    },
+    {
+      "name": "Sugarcane Juice No Ice",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$3.00"
+        }
+      ]
+    },
+    {
+      "name": "Lychee Ice",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.00"
+        }
+      ]
+    },
+    {
+      "name": "Longan",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.00"
+        }
+      ]
+    },
+    {
+      "name": "Milo Dinosaur",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.50"
+        }
+      ]
+    },
+    {
+      "name": "Milo",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.00"
+        }
+      ]
+    },
+    {
+      "name": "BBQ Sambal Stingray",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Grilled Fish",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$36"
+        },
+        {
+          "label": "Medium",
+          "price": "$38"
+        },
+        {
+          "label": "Large",
+          "price": "$42"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$46"
+        }
+      ]
+    },
+    {
+      "name": "Sambal Squid",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Baby Squid",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$25"
+        }
+      ]
+    },
+    {
+      "name": "Calamari",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$25"
+        }
+      ]
+    },
+    {
+      "name": "Salad You Tiao",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Chut Chut",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Gong Gong",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Clams",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "No Pork No Lard"
+  ],
+  "notes": "Visible tags: BEST SELLER, RECOMMENDED. Calamari can be upgraded with salted egg for an additional $3."
+}

@@ -1,4 +1,4 @@
-const { useState, useRef } = React;
+const { useState, useRef, useEffect } = React;
 
 const API_BASE = "http://localhost:8000";
 
@@ -22,6 +22,11 @@ function App() {
   const [results, setResults] = useState(null);
   const [activeLang, setActiveLang] = useState("en");
   const [generating, setGenerating] = useState(false);
+
+  // Marketing card state
+  const [cardResult, setCardResult] = useState(null);
+  const [generatingCard, setGeneratingCard] = useState(false);
+  const [cardError, setCardError] = useState(null);
 
   const pendingRef = useRef(0);
 
@@ -118,7 +123,10 @@ function App() {
     }
     setGenerating(true);
     setError(null);
+    setCardError(null);
+    setCardResult(null);
     try {
+      // Step 1: Generate text copy
       const resp = await fetch(`${API_BASE}/api/generate-copy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,8 +138,41 @@ function App() {
         }),
       });
       if (!resp.ok) throw new Error(await resp.text());
-      const data = await resp.json();
-      setResults(data);
+      const copyData = await resp.json();
+      setResults(copyData);
+
+      // Save checkpoint
+      localStorage.setItem("makanmap_checkpoint", JSON.stringify({
+        stall_name: stallName, address, cuisine_type: cuisineType,
+        description: stallDesc, dishes: validDishes, tags, notes,
+        generated_copy: copyData, timestamp: new Date().toISOString(),
+      }));
+
+      // Step 2: Auto-generate card image
+      setGeneratingCard(true);
+      try {
+        const cardResp = await fetch(`${API_BASE}/api/generate-card`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            stall_name: stallName,
+            cuisine_type: cuisineType,
+            address,
+            dishes: validDishes,
+            tags,
+            en_text: copyData?.en?.whatsapp || "",
+            zh_text: copyData?.zh?.whatsapp || "",
+            bm_text: copyData?.bm?.whatsapp || "",
+          }),
+        });
+        if (!cardResp.ok) throw new Error(await cardResp.text());
+        setCardResult(await cardResp.json());
+      } catch (cardErr) {
+        setCardError("Card image generation failed — showing fallback.");
+        setCardResult({ status: "unsupported" });
+      } finally {
+        setGeneratingCard(false);
+      }
     } catch (err) {
       setError("Failed to generate copy. Please try again.");
     } finally {
@@ -389,6 +430,34 @@ function App() {
 
       {/* Results */}
       {results && <ResultsSection results={results} activeLang={activeLang} setActiveLang={setActiveLang} />}
+
+      {/* Marketing Card Section — auto-triggered after text copy */}
+      {(generatingCard || cardResult) && (
+        <div className="mt-8">
+          <h2 className="text-lg font-bold text-secondary mb-2">Marketing Card</h2>
+          <p className="text-xs text-muted mb-4">AI-generated multilingual card for social media.</p>
+
+          {generatingCard && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto mb-3"></div>
+              <p className="text-sm text-muted">Generating card with Gemini...</p>
+              <p className="text-xs text-muted mt-1">This may take up to a minute</p>
+            </div>
+          )}
+
+          {cardError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm mb-4">{cardError}</div>
+          )}
+
+          {cardResult && (
+            <MarketingCardDisplay
+              cardResult={cardResult}
+              stallName={stallName}
+              stallData={{ stallName, address, cuisineType, tags, results }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -464,6 +533,126 @@ function CopyCard({ icon, label, text }) {
       </div>
       <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{text}</p>
       <p className="text-xs text-muted mt-2">{text.length} chars</p>
+    </div>
+  );
+}
+
+function MarketingCardDisplay({ cardResult, stallName, stallData }) {
+  const [downloaded, setDownloaded] = useState(false);
+
+  // If Gemini returned an image
+  if (cardResult.status === "success" && cardResult.image_base64) {
+    function handleDownload() {
+      const link = document.createElement("a");
+      link.href = cardResult.image_base64;
+      link.download = `${stallName.replace(/\s+/g, "_")}_multilingual_card.png`;
+      link.click();
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 2000);
+    }
+
+    async function handleShare() {
+      try {
+        const resp = await fetch(cardResult.image_base64);
+        const blob = await resp.blob();
+        const file = new File([blob], "marketing_card.png", { type: "image/png" });
+        await navigator.share({ files: [file], title: `${stallName} Marketing Card` });
+      } catch {
+        handleDownload();
+      }
+    }
+
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <img src={cardResult.image_base64} alt="Multilingual Marketing Card" className="w-full rounded-lg mb-3" />
+        <div className="flex gap-2">
+          <button onClick={handleDownload} className={`flex-1 py-2.5 rounded-full text-sm font-semibold transition ${downloaded ? "bg-green-100 text-green-700" : "bg-gray-100 text-secondary"}`}>
+            {downloaded ? "Saved!" : "Download"}
+          </button>
+          <button onClick={handleShare} className="flex-1 py-2.5 rounded-full text-sm font-semibold bg-primary text-white">
+            Share
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback: render HTML card via html2canvas
+  return <FallbackCard stallData={stallData} />;
+}
+
+function FallbackCard({ stallData }) {
+  const cardRef = useRef(null);
+  const [imageData, setImageData] = useState(null);
+  const [downloaded, setDownloaded] = useState(false);
+
+  useEffect(() => {
+    if (!cardRef.current) return;
+    const timer = setTimeout(() => {
+      html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: null }).then((canvas) => {
+        setImageData(canvas.toDataURL("image/png"));
+      });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  function handleDownload() {
+    if (!imageData) return;
+    const link = document.createElement("a");
+    link.href = imageData;
+    link.download = `${stallData.stallName.replace(/\s+/g, "_")}_card.png`;
+    link.click();
+    setDownloaded(true);
+    setTimeout(() => setDownloaded(false), 2000);
+  }
+
+  const en = stallData.results?.en?.whatsapp || `${stallData.stallName} — Authentic ${stallData.cuisineType || "hawker"} food`;
+  const zh = stallData.results?.zh?.whatsapp || stallData.stallName;
+  const bm = stallData.results?.bm?.whatsapp || stallData.stallName;
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <p className="text-xs text-muted mb-3">Generated using HTML fallback</p>
+
+      {/* Hidden off-screen card for html2canvas */}
+      <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+        <div ref={cardRef} style={{ width: 1080, height: 1350, display: "flex", flexDirection: "column", fontFamily: "Inter, system-ui, sans-serif" }}>
+          {/* EN block */}
+          <div style={{ flex: 1, background: "linear-gradient(135deg, #E85D26, #D14A1A)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 60 }}>
+            <div style={{ fontSize: 18, color: "rgba(255,255,255,0.7)", fontWeight: 600, letterSpacing: 2, marginBottom: 16 }}>ENGLISH</div>
+            <div style={{ fontSize: 36, color: "#fff", fontWeight: 800, textAlign: "center", lineHeight: 1.2, maxWidth: 900, overflow: "hidden" }}>{en.slice(0, 120)}</div>
+            <div style={{ fontSize: 20, color: "rgba(255,255,255,0.8)", marginTop: 20 }}>{stallData.stallName} | {stallData.address || "Singapore"}</div>
+          </div>
+          {/* ZH block */}
+          <div style={{ flex: 1, background: "linear-gradient(135deg, #1A2E5A, #0F1D3D)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 60 }}>
+            <div style={{ fontSize: 18, color: "rgba(255,255,255,0.7)", fontWeight: 600, letterSpacing: 2, marginBottom: 16 }}>中文</div>
+            <div style={{ fontSize: 36, color: "#fff", fontWeight: 800, textAlign: "center", lineHeight: 1.2, maxWidth: 900, overflow: "hidden" }}>{zh.slice(0, 120)}</div>
+            <div style={{ fontSize: 20, color: "rgba(255,255,255,0.8)", marginTop: 20 }}>{stallData.stallName}</div>
+          </div>
+          {/* BM block */}
+          <div style={{ flex: 1, background: "linear-gradient(135deg, #2D6A4F, #1B4332)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 60 }}>
+            <div style={{ fontSize: 18, color: "rgba(255,255,255,0.7)", fontWeight: 600, letterSpacing: 2, marginBottom: 16 }}>BAHASA MELAYU</div>
+            <div style={{ fontSize: 36, color: "#fff", fontWeight: 800, textAlign: "center", lineHeight: 1.2, maxWidth: 900, overflow: "hidden" }}>{bm.slice(0, 120)}</div>
+            <div style={{ fontSize: 20, color: "rgba(255,255,255,0.8)", marginTop: 20 }}>{stallData.stallName}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Rendered image or loading */}
+      {imageData ? (
+        <>
+          <img src={imageData} alt="Multilingual Card" className="w-full rounded-lg mb-3" />
+          <div className="flex gap-2">
+            <button onClick={handleDownload} className={`flex-1 py-2.5 rounded-full text-sm font-semibold transition ${downloaded ? "bg-green-100 text-green-700" : "bg-gray-100 text-secondary"}`}>
+              {downloaded ? "Saved!" : "Download"}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
+        </div>
+      )}
     </div>
   );
 }

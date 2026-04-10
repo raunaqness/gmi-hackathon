@@ -1,11 +1,13 @@
 import os
 import json
+import base64
 import logging
 import asyncio
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("makanmap")
@@ -216,24 +218,26 @@ async def parse_image(req: ParseImageRequest):
 
 class DishSize(BaseModel):
     label: str
-    price: str
+    price: Optional[str] = ""
 
 
 class Dish(BaseModel):
     name: str
-    price: str = ""
+    price: Optional[str] = ""
     sizes: list[DishSize] = []
 
 
 class GenerateCopyRequest(BaseModel):
     stall_name: str
-    cuisine_type: str
-    dishes: list[Dish]
+    cuisine_type: str = ""
+    dishes: list[Dish] = []
     description: str = ""
 
 
 @app.post("/api/generate-copy")
 async def generate_copy(req: GenerateCopyRequest):
+    log.info("[generate-copy] Request: stall=%s, cuisine=%s, dishes=%d, desc=%s",
+             req.stall_name, req.cuisine_type, len(req.dishes), req.description[:100] if req.description else "")
     if not GMI_API_KEY:
         raise HTTPException(status_code=500, detail="GMI_API_KEY not set")
 
@@ -251,7 +255,7 @@ async def generate_copy(req: GenerateCopyRequest):
         stall_info += f"\nDescription: {req.description}"
 
     payload = {
-        "model": "glm-5-fp8",
+        "model": "google/gemini-3.1-pro-preview",
         "messages": [
             {
                 "role": "system",
@@ -293,3 +297,143 @@ async def generate_copy(req: GenerateCopyRequest):
         raise HTTPException(status_code=502, detail=f"Failed to parse API response: {e}")
 
     return parsed
+
+
+# --- Task 4: Marketing Card Image Generation ---
+
+class GenerateCardRequest(BaseModel):
+    stall_name: str
+    cuisine_type: str
+    address: str = ""
+    dishes: list[Dish] = []
+    tags: list[str] = []
+    en_text: str = ""
+    zh_text: str = ""
+    bm_text: str = ""
+
+
+def extract_image_from_response(result: dict) -> Optional[str]:
+    """Extract base64 image data from a Gemini response. Returns data URI or None."""
+    try:
+        content = result["choices"][0]["message"]["content"]
+
+        # Case 1: content is a list of parts (multimodal response)
+        if isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict) and part.get("type") == "image_url":
+                    url = part.get("image_url", {}).get("url", "")
+                    if url:
+                        return url
+                if isinstance(part, dict) and "inline_data" in part:
+                    mime = part["inline_data"].get("mime_type", "image/png")
+                    data = part["inline_data"].get("data", "")
+                    if data:
+                        return f"data:{mime};base64,{data}"
+
+        # Case 2: content is a string containing a data URI
+        if isinstance(content, str) and "base64," in content:
+            idx = content.find("data:image")
+            if idx >= 0:
+                end = content.find('"', idx)
+                if end < 0:
+                    end = content.find("'", idx)
+                if end < 0:
+                    end = content.find("\n", idx)
+                if end < 0:
+                    end = len(content)
+                return content[idx:end].strip()
+
+    except (KeyError, IndexError) as e:
+        log.error("[extract-image] Failed to extract image: %s", e)
+
+    return None
+
+
+@app.post("/api/generate-card")
+async def generate_card(req: GenerateCardRequest):
+    if not GMI_API_KEY:
+        raise HTTPException(status_code=500, detail="GMI_API_KEY not set")
+
+    prompt = f"""Generate a visually striking marketing card image for a Singapore hawker stall.
+
+STALL: {req.stall_name}
+CUISINE: {req.cuisine_type}
+LOCATION: {req.address or "Singapore"}
+TAGS: {", ".join(req.tags) if req.tags else "Local favourite"}
+
+The card should have THREE horizontal blocks stacked vertically (1080x1350 pixels, 4:5 portrait):
+
+BLOCK 1 — TOP (English, warm orange #E85D26 background):
+Big bold white text: "{req.en_text or req.stall_name + ' — Authentic ' + req.cuisine_type}"
+Small white subtext: "{req.stall_name} | {req.address or 'Singapore'}"
+
+BLOCK 2 — MIDDLE (Dark navy #1A2E5A background):
+Big bold white Chinese text: "{req.zh_text or req.stall_name}"
+Small white subtext: "{req.stall_name}"
+
+BLOCK 3 — BOTTOM (Forest green #2D6A4F background):
+Big bold white Malay text: "{req.bm_text or req.stall_name}"
+Small white subtext: "{req.stall_name}"
+
+Style: Clean, modern, flat design. Bold sans-serif typography. Each block is clearly separated. Text should be large and readable. No photos — purely typographic. Add subtle texture or pattern for visual interest. Professional quality suitable for Instagram and WhatsApp sharing."""
+
+    payload = {
+        "model": "google/gemini-3.1-pro-preview",
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": 4096,
+        "temperature": 0.9,
+        "response_modalities": ["IMAGE", "TEXT"],
+        "modalities": ["text", "image"],
+    }
+
+    log.info("[generate-card] Generating multilingual card for stall=%s", req.stall_name)
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            log.info("[generate-card] Attempt %d/%d", attempt, MAX_RETRIES)
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.post(
+                    f"{GMI_BASE_URL}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {GMI_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+
+            if resp.status_code != 200:
+                log.error("[generate-card] Attempt %d failed: status=%d, body=%s",
+                          attempt, resp.status_code, resp.text[:500])
+                if attempt < MAX_RETRIES:
+                    await asyncio.sleep(RETRY_BACKOFF[attempt - 1])
+                    continue
+                raise HTTPException(status_code=502, detail=f"Image generation failed (status {resp.status_code})")
+
+            result = resp.json()
+            log.info("[generate-card] Response content type: %s",
+                     type(result.get("choices", [{}])[0].get("message", {}).get("content")))
+
+            image_data = extract_image_from_response(result)
+            if image_data:
+                log.info("[generate-card] Successfully extracted image (%d chars)", len(image_data))
+                return {"image_base64": image_data, "status": "success"}
+
+            # No image extracted — log and retry
+            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            log.warning("[generate-card] No image in response. Content preview: %s",
+                        str(content)[:300])
+            if attempt < MAX_RETRIES:
+                await asyncio.sleep(RETRY_BACKOFF[attempt - 1])
+                continue
+
+            return {"image_base64": None, "status": "unsupported",
+                    "message": "Gemini did not return an image. Use HTML fallback."}
+
+        except httpx.TimeoutException:
+            log.error("[generate-card] Attempt %d timed out", attempt)
+            if attempt < MAX_RETRIES:
+                await asyncio.sleep(RETRY_BACKOFF[attempt - 1])
+                continue
+            raise HTTPException(status_code=502, detail="Image generation timed out")
