@@ -23,22 +23,38 @@ function App() {
   const [activeLang, setActiveLang] = useState("en");
   const [generating, setGenerating] = useState(false);
 
+  const pendingRef = useRef(0);
+
   function handleImageUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
     e.target.value = "";
-    const preview = URL.createObjectURL(file);
-    const idx = uploadedImages.length;
-    setUploadedImages((prev) => [...prev, { preview, type: "...", loading: true }]);
-    setUploading(true);
     setError(null);
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result.split(",")[1];
-      parseImage(base64, idx);
-    };
-    reader.readAsDataURL(file);
+    const remaining = 5 - uploadedImages.length;
+    const batch = files.slice(0, remaining);
+    if (files.length > remaining) {
+      setError(`Only ${remaining} more photo(s) allowed (max 5 total). First ${batch.length} selected.`);
+    }
+    if (batch.length === 0) {
+      setError("Maximum 5 photos reached.");
+      return;
+    }
+
+    setUploading(true);
+    const startIdx = uploadedImages.length;
+    const placeholders = batch.map((f) => ({ preview: URL.createObjectURL(f), type: "...", loading: true }));
+    setUploadedImages((prev) => [...prev, ...placeholders]);
+    pendingRef.current += batch.length;
+
+    batch.forEach((file, i) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(",")[1];
+        parseImage(base64, startIdx + i);
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   async function parseImage(base64, idx) {
@@ -82,7 +98,11 @@ function App() {
         )
       );
     } finally {
-      setUploading(false);
+      pendingRef.current -= 1;
+      if (pendingRef.current <= 0) {
+        pendingRef.current = 0;
+        setUploading(false);
+      }
     }
   }
 
@@ -144,19 +164,20 @@ function App() {
       <div className="mt-6">
         <button
           onClick={() => fileInputRef.current.click()}
-          disabled={uploading}
+          disabled={uploading || uploadedImages.length >= 5}
           className={`w-full font-semibold py-3 rounded-xl text-base shadow-sm transition ${
-            uploading
+            uploading || uploadedImages.length >= 5
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
               : "bg-primary text-white active:scale-95"
           }`}
         >
-          {uploading ? "Analyzing photo..." : "Upload a Photo"}
+          {uploading ? "Analyzing photos..." : `Upload Photos (${uploadedImages.length}/5)`}
         </button>
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
           onChange={handleImageUpload}
         />
