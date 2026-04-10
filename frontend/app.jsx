@@ -2,80 +2,96 @@ const { useState, useRef } = React;
 
 const API_BASE = "http://localhost:8000";
 
-// Screens: "landing", "photo-confirm", "manual-entry", "loading", "results"
-
 function App() {
-  const [screen, setScreen] = useState("landing");
+  // Cumulative stall profile "DB"
   const [stallName, setStallName] = useState("");
-  const [cuisineType, setCuisineType] = useState("Chinese");
+  const [address, setAddress] = useState("");
+  const [cuisineType, setCuisineType] = useState("");
   const [stallDesc, setStallDesc] = useState("");
-  const [dishes, setDishes] = useState([{ name: "", price: "" }]);
-  const [imageBase64, setImageBase64] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [results, setResults] = useState(null);
-  const [activeLang, setActiveLang] = useState("en");
-  const [loadingPhase, setLoadingPhase] = useState("");
+  const [dishes, setDishes] = useState([]);
+  const [notes, setNotes] = useState("");
+
+  // Upload state
+  const [uploadedImages, setUploadedImages] = useState([]); // { preview, type, loading }
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
 
-  function reset() {
-    setScreen("landing");
-    setStallName("");
-    setCuisineType("Chinese");
-    setStallDesc("");
-    setDishes([{ name: "", price: "" }]);
-    setImageBase64(null);
-    setImagePreview(null);
-    setResults(null);
-    setActiveLang("en");
-    setError(null);
-  }
+  // Results state (for later)
+  const [results, setResults] = useState(null);
+  const [activeLang, setActiveLang] = useState("en");
+  const [generating, setGenerating] = useState(false);
 
   function handleImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
-    setImagePreview(URL.createObjectURL(file));
+    e.target.value = "";
+    const preview = URL.createObjectURL(file);
+    const idx = uploadedImages.length;
+    setUploadedImages((prev) => [...prev, { preview, type: "...", loading: true }]);
+    setUploading(true);
+    setError(null);
+
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result.split(",")[1];
-      setImageBase64(base64);
-      parseMenu(base64);
+      parseImage(base64, idx);
     };
     reader.readAsDataURL(file);
   }
 
-  async function parseMenu(base64) {
-    setScreen("loading");
-    setLoadingPhase("Reading your menu...");
-    setError(null);
+  async function parseImage(base64, idx) {
     try {
-      const resp = await fetch(`${API_BASE}/api/parse-menu`, {
+      const resp = await fetch(`${API_BASE}/api/parse-image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image_base64: base64 }),
       });
       if (!resp.ok) throw new Error(await resp.text());
       const data = await resp.json();
-      if (data.stall_name) setStallName(data.stall_name);
-      if (data.cuisine_type) setCuisineType(data.cuisine_type);
-      if (data.dishes && data.dishes.length > 0) setDishes(data.dishes);
-      setScreen("photo-confirm");
+
+      // Update image type badge
+      setUploadedImages((prev) =>
+        prev.map((img, i) =>
+          i === idx ? { ...img, type: data.image_type || "other", loading: false } : img
+        )
+      );
+
+      // Merge into stall profile — fill empty fields, don't overwrite existing
+      if (data.stall_name && !stallName) setStallName(data.stall_name);
+      if (data.address && !address) setAddress(data.address);
+      if (data.cuisine_type && !cuisineType) setCuisineType(data.cuisine_type);
+      if (data.description && !stallDesc) setStallDesc(data.description);
+      if (data.notes && !notes) setNotes(data.notes);
+
+      // Append new dishes
+      if (data.dishes && data.dishes.length > 0) {
+        setDishes((prev) => [...prev, ...data.dishes]);
+      }
     } catch (err) {
-      setError("Couldn't read the menu. Try a clearer photo or enter manually.");
-      setScreen("landing");
+      setError("Couldn't analyze this image. Try another photo.");
+      setUploadedImages((prev) =>
+        prev.map((img, i) =>
+          i === idx ? { ...img, type: "error", loading: false } : img
+        )
+      );
+    } finally {
+      setUploading(false);
     }
   }
 
   async function generateCopy() {
-    setScreen("loading");
-    setLoadingPhase("Writing your captions in 3 languages...");
-    setError(null);
     const validDishes = dishes.filter((d) => d.name.trim());
-    if (validDishes.length === 0) {
-      setError("Add at least one dish.");
-      setScreen("manual-entry");
+    if (!stallName.trim()) {
+      setError("Please add a stall name before generating.");
       return;
     }
+    if (validDishes.length === 0) {
+      setError("Please add at least one dish before generating.");
+      return;
+    }
+    setGenerating(true);
+    setError(null);
     try {
       const resp = await fetch(`${API_BASE}/api/generate-copy`, {
         method: "POST",
@@ -84,95 +100,88 @@ function App() {
           stall_name: stallName,
           cuisine_type: cuisineType,
           dishes: validDishes,
-          description: stallDesc,
+          description: [stallDesc, address, notes].filter(Boolean).join(". "),
         }),
       });
       if (!resp.ok) throw new Error(await resp.text());
       const data = await resp.json();
       setResults(data);
-      setScreen("results");
     } catch (err) {
       setError("Failed to generate copy. Please try again.");
-      setScreen("landing");
+    } finally {
+      setGenerating(false);
     }
   }
 
-  // --- LANDING ---
-  if (screen === "landing") {
-    return (
-      <div className="min-h-screen bg-surface flex flex-col items-center px-4 pt-12 pb-8 max-w-md mx-auto">
-        <h1 className="text-4xl font-extrabold text-secondary tracking-tight">HawkerBoost</h1>
-        <p className="text-muted mt-2 text-center text-sm">AI marketing copy for your hawker stall — in 30 seconds.</p>
+  const hasEnoughInfo = stallName.trim() && dishes.some((d) => d.name.trim());
 
-        {error && (
-          <div className="mt-4 w-full bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
-        )}
+  const typeBadgeColors = {
+    menu: "bg-blue-100 text-blue-700",
+    stall: "bg-green-100 text-green-700",
+    food: "bg-orange-100 text-orange-700",
+    other: "bg-gray-100 text-gray-600",
+    error: "bg-red-100 text-red-600",
+    "...": "bg-gray-100 text-gray-400",
+  };
 
-        <div className="mt-8 w-full space-y-4">
-          <button
-            onClick={() => fileInputRef.current.click()}
-            className="w-full bg-primary text-white font-semibold py-4 rounded-xl text-lg shadow-md active:scale-95 transition"
-          >
-            Upload Menu Photo
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageUpload}
-          />
-          <button
-            onClick={() => setScreen("manual-entry")}
-            className="w-full bg-white border-2 border-secondary text-secondary font-semibold py-4 rounded-xl text-lg active:scale-95 transition"
-          >
-            Enter Manually
-          </button>
-        </div>
+  return (
+    <div className="min-h-screen bg-surface px-4 pt-8 pb-12 max-w-md mx-auto">
+      {/* Header */}
+      <h1 className="text-3xl font-extrabold text-secondary tracking-tight text-center">HawkerBoost</h1>
+      <p className="text-muted mt-1 text-center text-sm">Upload photos of your stall &mdash; we'll do the rest.</p>
 
-        <div className="mt-10 flex items-center gap-6 text-center text-xs text-muted">
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-2xl">1.</span>
-            <span>Snap</span>
-          </div>
-          <span className="text-muted text-lg">&#8594;</span>
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-2xl">2.</span>
-            <span>Generate</span>
-          </div>
-          <span className="text-muted text-lg">&#8594;</span>
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-2xl">3.</span>
-            <span>Copy</span>
-          </div>
-        </div>
+      {error && (
+        <div className="mt-4 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
+      )}
 
-        <p className="mt-6 text-xs text-muted text-center">Output in English, &#20013;&#25991; &amp; Bahasa Melayu</p>
+      {/* Upload Area */}
+      <div className="mt-6">
+        <button
+          onClick={() => fileInputRef.current.click()}
+          disabled={uploading}
+          className={`w-full font-semibold py-3 rounded-xl text-base shadow-sm transition ${
+            uploading
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-primary text-white active:scale-95"
+          }`}
+        >
+          {uploading ? "Analyzing photo..." : "Upload a Photo"}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageUpload}
+        />
+        <p className="text-xs text-muted mt-2 text-center">Menu, stall front, food photos &mdash; anything helps!</p>
       </div>
-    );
-  }
 
-  // --- LOADING ---
-  if (screen === "loading") {
-    return (
-      <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-6"></div>
-        <p className="text-lg text-secondary font-medium">{loadingPhase}</p>
-      </div>
-    );
-  }
+      {/* Uploaded Images Grid */}
+      {uploadedImages.length > 0 && (
+        <div className="mt-4 flex gap-3 flex-wrap">
+          {uploadedImages.map((img, i) => (
+            <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+              <img src={img.preview} alt="" className="w-full h-full object-cover" />
+              {img.loading ? (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                </div>
+              ) : (
+                <span className={`absolute bottom-0 left-0 right-0 text-center text-[10px] font-semibold py-0.5 ${typeBadgeColors[img.type] || typeBadgeColors.other}`}>
+                  {img.type}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
-  // --- PHOTO CONFIRM ---
-  if (screen === "photo-confirm") {
-    return (
-      <div className="min-h-screen bg-surface px-4 pt-6 pb-8 max-w-md mx-auto">
-        <h2 className="text-2xl font-bold text-secondary mb-4">Confirm Your Menu</h2>
+      {/* Stall Details Card */}
+      <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <h2 className="text-sm font-semibold text-secondary mb-3">Stall Details</h2>
 
-        {imagePreview && (
-          <img src={imagePreview} alt="Menu" className="w-full rounded-lg mb-4 max-h-48 object-cover" />
-        )}
-
-        <label className="block text-sm font-medium text-secondary mb-1">Stall Name</label>
+        <label className="block text-xs font-medium text-muted mb-1">Stall Name</label>
         <input
           value={stallName}
           onChange={(e) => setStallName(e.target.value)}
@@ -180,207 +189,161 @@ function App() {
           placeholder="e.g. Ah Kow Char Kway Teow"
         />
 
-        <label className="block text-sm font-medium text-secondary mb-1">Cuisine Type</label>
-        <select
-          value={cuisineType}
-          onChange={(e) => setCuisineType(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 text-sm"
-        >
-          {["Chinese", "Malay", "Indian", "Western", "Mixed", "Other"].map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
-
-        <label className="block text-sm font-medium text-secondary mb-2">Dishes</label>
-        {dishes.map((dish, i) => (
-          <div key={i} className="flex gap-2 mb-2">
-            <input
-              value={dish.name}
-              onChange={(e) => {
-                const next = [...dishes];
-                next[i] = { ...next[i], name: e.target.value };
-                setDishes(next);
-              }}
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              placeholder="Dish name"
-            />
-            <input
-              value={dish.price}
-              onChange={(e) => {
-                const next = [...dishes];
-                next[i] = { ...next[i], price: e.target.value };
-                setDishes(next);
-              }}
-              className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              placeholder="$0.00"
-            />
-            {dishes.length > 1 && (
-              <button
-                onClick={() => setDishes(dishes.filter((_, j) => j !== i))}
-                className="text-red-400 text-sm px-2"
-              >
-                &#10005;
-              </button>
-            )}
-          </div>
-        ))}
-        <button
-          onClick={() => setDishes([...dishes, { name: "", price: "" }])}
-          className="text-primary text-sm font-medium mb-6"
-        >
-          + Add Dish
-        </button>
-
-        <button
-          onClick={generateCopy}
-          className="w-full bg-primary text-white font-semibold py-4 rounded-xl text-lg shadow-md active:scale-95 transition"
-        >
-          Looks good — Generate Copy
-        </button>
-        <button onClick={reset} className="w-full text-muted text-sm mt-3 py-2">Start Over</button>
-      </div>
-    );
-  }
-
-  // --- MANUAL ENTRY ---
-  if (screen === "manual-entry") {
-    return (
-      <div className="min-h-screen bg-surface px-4 pt-6 pb-8 max-w-md mx-auto">
-        <h2 className="text-2xl font-bold text-secondary mb-4">Enter Your Menu</h2>
-
-        {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
-        )}
-
-        <label className="block text-sm font-medium text-secondary mb-1">Stall Name *</label>
+        <label className="block text-xs font-medium text-muted mb-1">Address / Location</label>
         <input
-          value={stallName}
-          onChange={(e) => setStallName(e.target.value)}
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 text-sm"
-          placeholder="e.g. Ah Kow Char Kway Teow"
+          placeholder="e.g. Tiong Bahru Market, Stall #02-05"
         />
 
-        <label className="block text-sm font-medium text-secondary mb-1">Cuisine Type</label>
-        <select
-          value={cuisineType}
-          onChange={(e) => setCuisineType(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 text-sm"
-        >
-          {["Chinese", "Malay", "Indian", "Western", "Mixed", "Other"].map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
+        <div className="flex gap-3 mb-3">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-muted mb-1">Cuisine Type</label>
+            <select
+              value={cuisineType}
+              onChange={(e) => setCuisineType(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="">Select...</option>
+              {["Chinese", "Malay", "Indian", "Western", "Japanese", "Korean", "Thai", "Mixed", "Other"].map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-        <label className="block text-sm font-medium text-secondary mb-1">Stall Description (optional)</label>
+        <label className="block text-xs font-medium text-muted mb-1">Description</label>
         <input
           value={stallDesc}
           onChange={(e) => setStallDesc(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 text-sm"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
           placeholder="e.g. Family recipe, 30 years in Tiong Bahru"
-          maxLength={100}
+          maxLength={200}
         />
 
-        <label className="block text-sm font-medium text-secondary mb-2">Dishes *</label>
-        {dishes.map((dish, i) => (
-          <div key={i} className="flex gap-2 mb-2">
-            <input
-              value={dish.name}
-              onChange={(e) => {
-                const next = [...dishes];
-                next[i] = { ...next[i], name: e.target.value };
-                setDishes(next);
-              }}
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              placeholder="Dish name"
-            />
-            <input
-              value={dish.price}
-              onChange={(e) => {
-                const next = [...dishes];
-                next[i] = { ...next[i], price: e.target.value };
-                setDishes(next);
-              }}
-              className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              placeholder="$0.00"
-            />
-            {dishes.length > 1 && (
+        {notes && (
+          <div className="mt-3 bg-blue-50 rounded-lg px-3 py-2">
+            <p className="text-xs font-medium text-blue-700 mb-1">AI Notes</p>
+            <p className="text-xs text-blue-600">{notes}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Menu Items Card */}
+      <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <h2 className="text-sm font-semibold text-secondary mb-3">
+          Menu Items {dishes.length > 0 && <span className="text-muted font-normal">({dishes.length})</span>}
+        </h2>
+
+        {dishes.length === 0 ? (
+          <p className="text-xs text-muted mb-3">No dishes yet. Upload a menu photo or add manually.</p>
+        ) : (
+          dishes.map((dish, i) => (
+            <div key={i} className="flex gap-2 mb-2">
+              <input
+                value={dish.name}
+                onChange={(e) => {
+                  const next = [...dishes];
+                  next[i] = { ...next[i], name: e.target.value };
+                  setDishes(next);
+                }}
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                placeholder="Dish name"
+              />
+              <input
+                value={dish.price}
+                onChange={(e) => {
+                  const next = [...dishes];
+                  next[i] = { ...next[i], price: e.target.value };
+                  setDishes(next);
+                }}
+                className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                placeholder="$0.00"
+              />
               <button
                 onClick={() => setDishes(dishes.filter((_, j) => j !== i))}
                 className="text-red-400 text-sm px-2"
               >
                 &#10005;
               </button>
-            )}
-          </div>
-        ))}
-        {dishes.length < 20 && (
-          <button
-            onClick={() => setDishes([...dishes, { name: "", price: "" }])}
-            className="text-primary text-sm font-medium mb-6"
-          >
-            + Add Dish
-          </button>
+            </div>
+          ))
         )}
+        <button
+          onClick={() => setDishes([...dishes, { name: "", price: "" }])}
+          className="text-primary text-sm font-medium mt-1"
+        >
+          + Add Dish
+        </button>
+      </div>
 
+      {/* Generate Button */}
+      <div className="mt-6">
         <button
           onClick={generateCopy}
-          className="w-full bg-primary text-white font-semibold py-4 rounded-xl text-lg shadow-md active:scale-95 transition"
+          disabled={!hasEnoughInfo || generating}
+          className={`w-full font-semibold py-4 rounded-xl text-lg shadow-md transition ${
+            hasEnoughInfo && !generating
+              ? "bg-secondary text-white active:scale-95"
+              : "bg-gray-200 text-gray-400 cursor-not-allowed"
+          }`}
         >
-          Generate Copy
+          {generating ? "Generating..." : "Generate Marketing Copy"}
         </button>
-        <button onClick={reset} className="w-full text-muted text-sm mt-3 py-2">Start Over</button>
+        {!hasEnoughInfo && (
+          <p className="text-xs text-muted mt-2 text-center">Add a stall name and at least one dish to continue.</p>
+        )}
       </div>
-    );
-  }
 
-  // --- RESULTS ---
-  if (screen === "results") {
-    const langs = [
-      { key: "en", label: "EN" },
-      { key: "zh", label: "\u4e2d\u6587" },
-      { key: "bm", label: "BM" },
-    ];
-    const platforms = [
-      { key: "instagram", label: "Instagram Caption", icon: "\ud83d\udcf8" },
-      { key: "google_maps", label: "Google Maps Description", icon: "\ud83d\udccd" },
-      { key: "whatsapp", label: "WhatsApp Broadcast", icon: "\ud83d\udcac" },
-    ];
+      {/* Results */}
+      {results && <ResultsSection results={results} activeLang={activeLang} setActiveLang={setActiveLang} />}
+    </div>
+  );
+}
 
-    return (
-      <div className="min-h-screen bg-surface px-4 pt-6 pb-8 max-w-md mx-auto">
-        <h2 className="text-2xl font-bold text-secondary mb-4">Your Marketing Copy</h2>
+function ResultsSection({ results, activeLang, setActiveLang }) {
+  const langs = [
+    { key: "en", label: "EN" },
+    { key: "zh", label: "\u4e2d\u6587" },
+    { key: "bm", label: "BM" },
+  ];
+  const platforms = [
+    { key: "instagram", label: "Instagram Caption", icon: "\ud83d\udcf8" },
+    { key: "google_maps", label: "Google Maps Description", icon: "\ud83d\udccd" },
+    { key: "whatsapp", label: "WhatsApp Broadcast", icon: "\ud83d\udcac" },
+  ];
 
-        <div className="flex gap-2 mb-6">
-          {langs.map((l) => (
-            <button
-              key={l.key}
-              onClick={() => setActiveLang(l.key)}
-              className={`flex-1 py-2 rounded-full text-sm font-semibold transition ${
-                activeLang === l.key
-                  ? "bg-primary text-white"
-                  : "bg-white border border-gray-300 text-secondary"
-              }`}
-            >
-              {l.label}
-            </button>
-          ))}
-        </div>
+  return (
+    <div className="mt-8">
+      <h2 className="text-lg font-bold text-secondary mb-4">Your Marketing Copy</h2>
 
-        {platforms.map((p) => (
-          <CopyCard
-            key={p.key}
-            icon={p.icon}
-            label={p.label}
-            text={results?.[activeLang]?.[p.key] || ""}
-          />
+      <div className="flex gap-2 mb-4">
+        {langs.map((l) => (
+          <button
+            key={l.key}
+            onClick={() => setActiveLang(l.key)}
+            className={`flex-1 py-2 rounded-full text-sm font-semibold transition ${
+              activeLang === l.key
+                ? "bg-primary text-white"
+                : "bg-white border border-gray-300 text-secondary"
+            }`}
+          >
+            {l.label}
+          </button>
         ))}
-
-        <button onClick={reset} className="w-full text-muted text-sm mt-6 py-2">Start Over</button>
       </div>
-    );
-  }
 
-  return null;
+      {platforms.map((p) => (
+        <CopyCard
+          key={p.key}
+          icon={p.icon}
+          label={p.label}
+          text={results?.[activeLang]?.[p.key] || ""}
+        />
+      ))}
+    </div>
+  );
 }
 
 function CopyCard({ icon, label, text }) {

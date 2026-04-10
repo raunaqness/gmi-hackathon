@@ -23,19 +23,19 @@ def health():
     return {"status": "ok"}
 
 
-# --- Task 2: Menu Photo Parsing ---
+# --- Image Parsing (smart classification) ---
 
-class ParseMenuRequest(BaseModel):
+class ParseImageRequest(BaseModel):
     image_base64: str
 
 
-@app.post("/api/parse-menu")
-async def parse_menu(req: ParseMenuRequest):
+@app.post("/api/parse-image")
+async def parse_image(req: ParseImageRequest):
     if not GMI_API_KEY:
         raise HTTPException(status_code=500, detail="GMI_API_KEY not set")
 
     payload = {
-        "model": "gpt-4o-mini",
+        "model": "google/gemini-3.1-pro-preview",
         "messages": [
             {
                 "role": "user",
@@ -49,18 +49,24 @@ async def parse_menu(req: ParseMenuRequest):
                     {
                         "type": "text",
                         "text": (
-                            "You are extracting structured data from a food menu photo.\n"
-                            "Return a JSON object with:\n"
-                            '- "stall_name": the name of the stall if visible, else null\n'
-                            '- "cuisine_type": inferred cuisine type (e.g. "Chinese", "Malay", "Indian", "Western")\n'
-                            '- "dishes": an array of objects with "name" (string) and "price" (string, e.g. "$3.50")\n\n'
+                            "You are analyzing a photo related to a food stall or restaurant.\n"
+                            "First, classify the image as one of: \"menu\", \"stall\", \"food\", or \"other\".\n\n"
+                            "Then extract ALL relevant information you can see.\n\n"
+                            "Return a JSON object with these fields (include only fields you can extract):\n"
+                            '- "image_type": one of "menu", "stall", "food", "other"\n'
+                            '- "stall_name": name of the stall/restaurant if visible\n'
+                            '- "address": address or location if visible (e.g. "Tiong Bahru Market, Stall #02-05")\n'
+                            '- "cuisine_type": inferred cuisine (e.g. "Chinese", "Malay", "Indian", "Western")\n'
+                            '- "description": any tagline, slogan, or description visible\n'
+                            '- "dishes": array of {"name": string, "price": string} if menu items are visible\n'
+                            '- "notes": any other useful info (opening hours, phone number, specialties mentioned)\n\n'
                             "Only return valid JSON. No explanation."
                         ),
                     },
                 ],
             }
         ],
-        "max_tokens": 1000,
+        "max_tokens": 1500,
     }
 
     async with httpx.AsyncClient(timeout=30) as client:
@@ -78,7 +84,6 @@ async def parse_menu(req: ParseMenuRequest):
 
     try:
         content = resp.json()["choices"][0]["message"]["content"]
-        # Strip markdown code fences if present
         content = content.strip()
         if content.startswith("```"):
             content = content.split("\n", 1)[1]
