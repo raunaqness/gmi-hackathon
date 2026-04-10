@@ -1,4 +1,4 @@
-# HawkerBoost — Changelog
+# MakanMap — Changelog
 
 ## 2026-04-10
 
@@ -12,8 +12,8 @@
 - Removed retry logic — no longer needed with this approach
 
 ### `9f28c9a` feat: add retry logic (3 attempts) and log to file
-- Added structured logging throughout backend (hawkerboost logger)
-- Backend logs to `hawkerboost.log` with full request/response tracing
+- Added structured logging throughout backend (makanmap logger)
+- Backend logs to `makanmap.log` with full request/response tracing
 - run.sh prints log path and tail command on startup
 - *(Retries later removed in favor of two-step pipeline)*
 

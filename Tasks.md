@@ -1,4 +1,4 @@
-# HawkerBoost — Tasks
+# MakanMap — Tasks
 
 ## Completed
 
@@ -13,7 +13,7 @@
 - [x] **Singapore Dietary Tags** — Halal, No Pork No Lard, MUIS, Vegetarian, etc.
 - [x] **Michelin Recognition** — Detects Michelin Star, Bib Gourmand, Michelin Selected
 - [x] **Results Screen** — Language switcher (EN/ZH/BM), copy-to-clipboard per card, char counts
-- [x] **Logging** — Backend logs to hawkerboost.log with full request/response tracing
+- [x] **Logging** — Backend logs to makanmap.log with full request/response tracing
 - [x] **Polish** — Inter font, PRD colour palette, mobile-first layout
 
 ## Remaining

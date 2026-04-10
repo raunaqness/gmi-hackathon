@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("hawkerboost")
+log = logging.getLogger("makanmap")
 
 app = FastAPI()
 

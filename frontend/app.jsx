@@ -153,7 +153,7 @@ function App() {
   return (
     <div className="min-h-screen bg-surface px-4 pt-8 pb-12 max-w-md mx-auto">
       {/* Header */}
-      <h1 className="text-3xl font-extrabold text-secondary tracking-tight text-center">HawkerBoost</h1>
+      <h1 className="text-3xl font-extrabold text-secondary tracking-tight text-center">MakanMap</h1>
       <p className="text-muted mt-1 text-center text-sm">Upload photos of your stall &mdash; we'll do the rest.</p>
 
       {error && (

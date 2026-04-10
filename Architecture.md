@@ -1,8 +1,12 @@
-# HawkerBoost — Architecture
+# MakanMap — Architecture
 
 ## Overview
 
-HawkerBoost is a mobile-first web app that helps Singapore hawker stall owners generate marketing copy. The user uploads photos (menu, stall front, food) and the AI extracts stall info, menu items, dietary tags, and Michelin recognition. When ready, it generates copy for Instagram, Google Maps, and WhatsApp in three languages (EN, ZH, BM).
+MakanMap is a two-sided platform for Singapore's hawker ecosystem. Stall owners snap a photo of their menu to go live in minutes; consumers get a real-time map of what's open, what's on the menu, and how to get there — in three languages (EN, ZH, BM).
+
+The MVP (built at the GMI Cloud x Z.ai Singapore Hackathon 2025) covers the **stallholder onboarding side**: upload photos, AI extracts stall info and menu items, then generates ready-to-publish marketing copy for Instagram, Google Maps, and WhatsApp.
+
+**One onboarding flow feeds both sides.** Every menu upload automatically populates the public discovery layer — no separate data entry, no admin overhead.
 
 ## Stack
 
@@ -10,10 +14,19 @@ HawkerBoost is a mobile-first web app that helps Singapore hawker stall owners g
 |-------|-----------|-----------|
 | Frontend | React 18 + Tailwind CSS (via CDN) | Zero build step, single file, fast iteration |
 | Backend | Python FastAPI | Async, lightweight, easy API proxying |
-| Vision AI | Gemini 3.1 Pro (via GMI Cloud) | Best-in-class image understanding |
-| JSON Structuring | GPT-5.4-mini (via GMI Cloud) | Reliable structured output from free-form text |
+| Vision AI | Gemini 3.1 Pro (via GMI Cloud) | Best-in-class image OCR |
+| JSON Structuring | GPT-5.4-mini (via GMI Cloud) | Reliable structured output from raw OCR text |
 | Copy Generation | GLM-5.1 / glm-5-fp8 (via GMI Cloud) | Strong multilingual generation (hackathon sponsor) |
 | API Gateway | GMI Cloud Inference Engine | Unified OpenAI-compatible API for all models |
+
+### Future Stack (Consumer Side)
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Map Rendering | SLA OneMap SDK | Singapore government map with barrier-free routing |
+| Base Data | NEA Open Data | Hawker centre and stall registry |
+| Geospatial | PostGIS + Redis | Location queries + real-time open status cache |
+| Stallholder Fallback | Telegram Bot | Low-friction daily open/closed toggle |
 
 ## Project Structure
 
@@ -28,8 +41,17 @@ gmi/
     backup-response.json — Cached demo fallback
   run.sh                 — Starts both servers, sources .env, logs to file
   .env                   — GMI_API_KEY (gitignored)
-  hawkerboost.log        — Backend logs (gitignored)
+  makanmap.log           — Backend logs (gitignored)
 ```
+
+## How It Works
+
+| Step | Who | Action | Output |
+|------|-----|--------|--------|
+| **1. SNAP** | Stallholder | Upload photo of menu, stall front, or food | Raw text extracted via OCR |
+| **2. EXTRACT** | AI Pipeline | Gemini OCR + GPT-5.4-mini structuring | Structured stall profile (dishes, prices, tags) |
+| **3. REVIEW** | Stallholder | Edit dish names, prices, dietary tags | Confirmed menu data |
+| **4. PUBLISH** | Stallholder | One-tap: generate marketing copy | IG / Google Maps / WhatsApp copy in 3 languages |
 
 ## API Endpoints
 
@@ -115,7 +137,7 @@ Generates marketing copy in 3 languages for 3 platforms.
                                     ▼
                          ┌──────────────────────────┐
                          │  Frontend merges result   │
-                         │  into stall profile DB:   │
+                         │  into stall profile:      │
                          │  - Stall name, address    │
                          │  - Cuisine type           │
                          │  - Dishes + portion sizes │
@@ -145,17 +167,27 @@ Generates marketing copy in 3 languages for 3 platforms.
 
 2. **Retry with backoff** — All API calls retry up to 3 times with 2/4/8s backoff. Vision timeout is 120s, structuring 60s, copy generation 90s. Handles intermittent GMI Cloud timeouts gracefully.
 
-2. **Cumulative profile (merge, not replace)** — Each photo upload adds to the stall profile rather than overwriting it. Stall name fills once; dishes always append. Users can upload a stall photo, then a menu photo, and the profile builds up.
+3. **Cumulative profile (merge, not replace)** — Each photo upload adds to the stall profile rather than overwriting it. Stall name fills once; dishes always append. Users can upload a stall photo, then a menu photo, and the profile builds up.
 
-3. **No build tools** — React and Tailwind via CDN, Babel transpiles JSX in-browser. Zero setup, single `python3 -m http.server` for frontend. Acceptable for a hackathon demo.
+4. **No build tools** — React and Tailwind via CDN, Babel transpiles JSX in-browser. Zero setup, single `python3 -m http.server` for frontend. Acceptable for a hackathon demo.
 
-4. **Frontend state as the "DB"** — No database, no persistence. All stall profile data lives in React useState. Sufficient for a single-session demo tool.
+5. **Frontend state as the "DB"** — No database, no persistence. All stall profile data lives in React useState. Sufficient for a single-session demo tool. Future: PostGIS + Redis for persistent stall profiles and real-time open status.
 
-5. **Singapore-specific intelligence** — Price shorthand parsing ($12/15/20 = portion sizes), dietary tag detection (Halal, No Pork No Lard, MUIS), Michelin recognition. These are domain-specific features that make the tool genuinely useful for hawker stall owners.
+6. **Singapore-specific intelligence** — Price shorthand parsing ($12/15/20 = portion sizes), dietary tag detection (Halal, No Pork No Lard, MUIS), Michelin recognition. These are domain-specific features that make the tool genuinely useful for hawker stall owners.
 
-6. **Consistent dish pricing structure** — All dishes use a `sizes` array: single-price items get `[{"label": "Regular", "price": "$X"}]`, two prices get Regular/Large, three get Small/Medium/Large. This unified structure simplifies frontend rendering and editing.
+7. **Consistent dish pricing structure** — All dishes use a `sizes` array: single-price items get `[{"label": "Regular", "price": "$X"}]`, two prices get Regular/Large, three get Small/Medium/Large. This unified structure simplifies frontend rendering and editing.
 
-7. **Missing price indicators** — When OCR fails to extract a price, the frontend highlights the dish with an amber border and "Price missing — please add it" prompt, guiding the user to fill in gaps manually.
+8. **Missing price indicators** — When OCR fails to extract a price, the frontend highlights the dish with an amber border and "Price missing — please add it" prompt, guiding the user to fill in gaps manually.
+
+## Smart Nation Alignment
+
+MakanMap sits adjacent to existing Smart Nation infrastructure:
+
+| Existing Solution | MakanMap Complement |
+|-------------------|---------------------|
+| Barrier-Free Access Routing (SLA) | Links accessible routes to nearest open hawker stall |
+| Smart Parking (HDB) | Applies same real-time status model to stall availability |
+| Lived Experience pillar | Adds hawker culture — Singapore's UNESCO heritage — as a live data layer |
 
 ## Running
 
@@ -167,7 +199,7 @@ echo 'GMI_API_KEY="your-key"' > .env
 ./run.sh
 
 # View logs
-tail -f hawkerboost.log
+tail -f makanmap.log
 
 # Open the app
 open http://localhost:3000

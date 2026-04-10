@@ -1,0 +1,1016 @@
+INFO:     Started server process [57925]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:61148 - "GET /health HTTP/1.1" 200 OK
+INFO:hawkerboost:[parse-image] Step 1: Sending image to Gemini (image_size=13535924 bytes)
+INFO:hawkerboost:[parse-image Step 1] Calling model=google/gemini-3.1-pro-preview (timeout=120s)
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 — model=google/gemini-3.1-pro-preview
+INFO:hawkerboost:[parse-image] Step 1: Sending image to Gemini (image_size=21691016 bytes)
+INFO:hawkerboost:[parse-image Step 1] Calling model=google/gemini-3.1-pro-preview (timeout=120s)
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 — model=google/gemini-3.1-pro-preview
+INFO:hawkerboost:[parse-image] Step 1: Sending image to Gemini (image_size=23844792 bytes)
+INFO:hawkerboost:[parse-image Step 1] Calling model=google/gemini-3.1-pro-preview (timeout=120s)
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 — model=google/gemini-3.1-pro-preview
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 succeeded — model=google/gemini-3.1-pro-preview, response_length=317 chars
+INFO:hawkerboost:[parse-image Step 1] Response:
+31 興興燒烤 HENG HENG BBQ
+먹고 죽자 Awesome Always
+Skewers | $1.00 each (Min. 10 Sticks)
+老虎虾 Tiger Prawn | 
+烧烤方鱼 BBQ Stingray | 
+辣椒螃蟹 Chilli Crab | 
+铁板龙虾 Grilled Lobster | 
+Sugarcane Juice | $2.00
+Sugarcane Juice w Lemon | $2.50
+Sugarcane Juice No Ice | $3.00
+Lychee Ice | $2.00
+Longan Ice | $2.00
+100% NO PORK NO LARD
+#01-30
+INFO:hawkerboost:[parse-image] Step 2: Structuring with GPT-5.4-mini
+INFO:hawkerboost:[parse-image Step 2] Calling model=openai/gpt-5.4-mini (timeout=60s)
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 — model=openai/gpt-5.4-mini
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 succeeded — model=openai/gpt-5.4-mini, response_length=1879 chars
+INFO:hawkerboost:[parse-image Step 2] Response:
+{
+  "image_type": "menu",
+  "stall_name": "HENG HENG BBQ",
+  "address": "#01-30",
+  "cuisine_type": "BBQ / Skewers",
+  "description": "BBQ stall offering skewers, seafood, and drinks. Slogan: \"먹고 죽자 Awesome Always\".",
+  "dishes": [
+    {
+      "name": "Skewers",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$1.00 each (Min. 10 Sticks)"
+        }
+      ]
+    },
+    {
+      "name": "Tiger Prawn",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "BBQ Stingray",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "Chilli Crab",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "Grilled Lobster",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "Sugarcane Juice",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.00"
+        }
+      ]
+    },
+    {
+      "name": "Sugarcane Juice w Lemon",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.50"
+        }
+      ]
+    },
+    {
+      "name": "Sugarcane Juice No Ice",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$3.00"
+        }
+      ]
+    },
+    {
+      "name": "Lychee Ice",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.00"
+        }
+      ]
+    },
+    {
+      "name": "Longan Ice",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.00"
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "No Pork No Lard"
+  ],
+  "notes": "Text includes \"31\" at the top, likely a stall or menu number. \"100% NO PORK NO LARD\" is stated on the sign."
+}
+INFO:hawkerboost:[parse-image] Final result: type=menu, dishes=10, tags=['No Pork No Lard']
+INFO:     127.0.0.1:61161 - "POST /api/parse-image HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 succeeded — model=google/gemini-3.1-pro-preview, response_length=259 chars
+INFO:hawkerboost:[parse-image Step 1] Response:
+31 HENG HENG BBQ 興興燒烤
+GRILLED LOBSTER | $9/100g
+TIGER PRAWN (1pc) | $18/20 24/28
+CRAYFISH (2pcs) | $25/$30
+CHILLI CRAB | $46/50 54/58
+BLACK PEPPER CRAB | $46/50 54/58
+SALTED EGG CRAB | $50/54/58
+CEREAL PRAWN | $25/30/35
+BUTTER PRAWN | $25/30/35
+SAMBAL PRAWN |
+INFO:hawkerboost:[parse-image] Step 2: Structuring with GPT-5.4-mini
+INFO:hawkerboost:[parse-image Step 2] Calling model=openai/gpt-5.4-mini (timeout=60s)
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 — model=openai/gpt-5.4-mini
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 succeeded — model=google/gemini-3.1-pro-preview, response_length=263 chars
+INFO:hawkerboost:[parse-image Step 1] Response:
+10 BBQ SAMBAL STINGRAY | $14/18/22
+11 GRILLED FISH | $36/38/42/46
+12 SAMBAL SQUID | $14/18/22
+13 BABY SQUID | $18/25
+14 CALAMARI (* ADD SALTED EGG +$3) | $18/25
+15 SALAD YOU TIAO | $14/$22
+16 CHUT CHUT | $14/18/22
+17 GONG GONG | $14/18/22
+18 CLAMS / LALA | $14/18
+INFO:hawkerboost:[parse-image] Step 2: Structuring with GPT-5.4-mini
+INFO:hawkerboost:[parse-image Step 2] Calling model=openai/gpt-5.4-mini (timeout=60s)
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 — model=openai/gpt-5.4-mini
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 succeeded — model=openai/gpt-5.4-mini, response_length=2754 chars
+INFO:hawkerboost:[parse-image Step 2] Response:
+{
+  "image_type": "menu",
+  "stall_name": "31 HENG HENG BBQ 興興燒烤",
+  "address": null,
+  "cuisine_type": "BBQ / Seafood",
+  "description": "Menu board for Heng Heng BBQ offering grilled seafood dishes.",
+  "dishes": [
+    {
+      "name": "Grilled Lobster",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$9/100g"
+        }
+      ]
+    },
+    {
+      "name": "Tiger Prawn (1pc)",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$18"
+        },
+        {
+          "label": "Medium",
+          "price": "$20"
+        },
+        {
+          "label": "Large",
+          "price": "$24"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$28"
+        }
+      ]
+    },
+    {
+      "name": "Crayfish (2pcs)",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$25"
+        },
+        {
+          "label": "Large",
+          "price": "$30"
+        }
+      ]
+    },
+    {
+      "name": "Chilli Crab",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$46"
+        },
+        {
+          "label": "Medium",
+          "price": "$50"
+        },
+        {
+          "label": "Large",
+          "price": "$54"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$58"
+        }
+      ]
+    },
+    {
+      "name": "Black Pepper Crab",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$46"
+        },
+        {
+          "label": "Medium",
+          "price": "$50"
+        },
+        {
+          "label": "Large",
+          "price": "$54"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$58"
+        }
+      ]
+    },
+    {
+      "name": "Salted Egg Crab",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$50"
+        },
+        {
+          "label": "Medium",
+          "price": "$54"
+        },
+        {
+          "label": "Large",
+          "price": "$58"
+        }
+      ]
+    },
+    {
+      "name": "Cereal Prawn",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$25"
+        },
+        {
+          "label": "Medium",
+          "price": "$30"
+        },
+        {
+          "label": "Large",
+          "price": "$35"
+        }
+      ]
+    },
+    {
+      "name": "Butter Prawn",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$25"
+        },
+        {
+          "label": "Medium",
+          "price": "$30"
+        },
+        {
+          "label": "Large",
+          "price": "$35"
+        }
+      ]
+    },
+    {
+      "name": "Sambal Prawn",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    }
+  ],
+  "tags": [],
+  "notes": null
+}
+INFO:hawkerboost:[parse-image] Final result: type=menu, dishes=9, tags=[]
+INFO:     127.0.0.1:61163 - "POST /api/parse-image HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 succeeded — model=openai/gpt-5.4-mini, response_length=2612 chars
+INFO:hawkerboost:[parse-image Step 2] Response:
+{
+  "image_type": "menu",
+  "stall_name": null,
+  "address": null,
+  "cuisine_type": "seafood",
+  "description": null,
+  "dishes": [
+    {
+      "name": "BBQ Sambal Stingray",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Grilled Fish",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$36"
+        },
+        {
+          "label": "Medium",
+          "price": "$38"
+        },
+        {
+          "label": "Large",
+          "price": "$42"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$46"
+        }
+      ]
+    },
+    {
+      "name": "Sambal Squid",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Baby Squid",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$25"
+        }
+      ]
+    },
+    {
+      "name": "Calamari",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$25"
+        }
+      ]
+    },
+    {
+      "name": "Salad You Tiao",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Chut Chut",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Gong Gong",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Clams / Lala",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Large",
+          "price": "$18"
+        }
+      ]
+    }
+  ],
+  "tags": [],
+  "notes": "Calamari can be added with salted egg for an additional $3."
+}
+INFO:hawkerboost:[parse-image] Final result: type=menu, dishes=9, tags=[]
+INFO:     127.0.0.1:61165 - "POST /api/parse-image HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61305 - "OPTIONS /api/parse-image HTTP/1.1" 200 OK
+INFO:hawkerboost:[parse-image] Step 1: Sending image to Gemini (image_size=13535924 bytes)
+INFO:hawkerboost:[parse-image Step 1] Calling model=google/gemini-3.1-pro-preview (timeout=120s)
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 — model=google/gemini-3.1-pro-preview
+INFO:hawkerboost:[parse-image] Step 1: Sending image to Gemini (image_size=21691016 bytes)
+INFO:hawkerboost:[parse-image Step 1] Calling model=google/gemini-3.1-pro-preview (timeout=120s)
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 — model=google/gemini-3.1-pro-preview
+INFO:hawkerboost:[parse-image] Step 1: Sending image to Gemini (image_size=23844792 bytes)
+INFO:hawkerboost:[parse-image Step 1] Calling model=google/gemini-3.1-pro-preview (timeout=120s)
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 — model=google/gemini-3.1-pro-preview
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 succeeded — model=google/gemini-3.1-pro-preview, response_length=268 chars
+INFO:hawkerboost:[parse-image Step 1] Response:
+31 HENG HENG BBQ
+Skewers | $1.00 each (Min. 10 Sticks)
+Tiger Prawn
+BBQ Stingray
+Chili Crab
+Grilled Lobster
+Sugarcane Juice | $2.00
+Sugarcane Juice w Lemon | $2.50
+Sugarcane Juice No Ice | $3.00
+Lychee Ice | $2.00
+Longan Ice | $2.00
+100% NO PORK NO LARD
+SG Clean
+#01-30
+INFO:hawkerboost:[parse-image] Step 2: Structuring with GPT-5.4-mini
+INFO:hawkerboost:[parse-image Step 2] Calling model=openai/gpt-5.4-mini (timeout=60s)
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 — model=openai/gpt-5.4-mini
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 succeeded — model=google/gemini-3.1-pro-preview, response_length=341 chars
+INFO:hawkerboost:[parse-image Step 1] Response:
+31 HENG HENG BBQ
+GRILLED LOBSTER | $9/100g
+TIGER PRAWN (1pc) | $18/20 24/28
+CRAYFISH (2pcs) | $25/$30
+CHILLI CRAB | $46/50 54/58
+BLACK PEPPER CRAB | $46/50 54/58
+SALTED EGG CRAB | $50/54/58
+CEREAL PRAWN | $25/30/35
+BUTTER PRAWN | $25/30/35
+SAMBAL PRAWN | $25/30/35
+STEAMED FISH | $42/$46
+STEAMED RED GROUPER | $46/$50
+BEST SELLER RECOMMENDED
+INFO:hawkerboost:[parse-image] Step 2: Structuring with GPT-5.4-mini
+INFO:hawkerboost:[parse-image Step 2] Calling model=openai/gpt-5.4-mini (timeout=60s)
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 — model=openai/gpt-5.4-mini
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 succeeded — model=openai/gpt-5.4-mini, response_length=1782 chars
+INFO:hawkerboost:[parse-image Step 2] Response:
+{
+  "image_type": "menu",
+  "stall_name": "31 HENG HENG BBQ",
+  "address": "#01-30",
+  "cuisine_type": "BBQ / Drinks",
+  "description": "BBQ skewer stall offering grilled seafood and fruit drinks.",
+  "dishes": [
+    {
+      "name": "Skewers",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$1.00 each (Min. 10 Sticks)"
+        }
+      ]
+    },
+    {
+      "name": "Tiger Prawn",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "BBQ Stingray",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "Chili Crab",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "Grilled Lobster",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": null
+        }
+      ]
+    },
+    {
+      "name": "Sugarcane Juice",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.00"
+        }
+      ]
+    },
+    {
+      "name": "Sugarcane Juice w Lemon",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.50"
+        }
+      ]
+    },
+    {
+      "name": "Sugarcane Juice No Ice",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$3.00"
+        }
+      ]
+    },
+    {
+      "name": "Lychee Ice",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.00"
+        }
+      ]
+    },
+    {
+      "name": "Longan Ice",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$2.00"
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "No Pork No Lard",
+    "SG Clean"
+  ],
+  "notes": "100% NO PORK NO LARD"
+}
+INFO:hawkerboost:[parse-image] Final result: type=menu, dishes=10, tags=['No Pork No Lard', 'SG Clean']
+INFO:     127.0.0.1:61305 - "POST /api/parse-image HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 succeeded — model=openai/gpt-5.4-mini, response_length=3389 chars
+INFO:hawkerboost:[parse-image Step 2] Response:
+{
+  "image_type": "menu",
+  "stall_name": "31 HENG HENG BBQ",
+  "address": null,
+  "cuisine_type": "seafood",
+  "description": "Seafood BBQ and cooked seafood menu featuring lobster, prawns, crab, and steamed fish.",
+  "dishes": [
+    {
+      "name": "Grilled Lobster",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$9/100g"
+        }
+      ]
+    },
+    {
+      "name": "Tiger Prawn (1pc)",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$20"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$24"
+        },
+        {
+          "label": "Extra Extra Large",
+          "price": "$28"
+        }
+      ]
+    },
+    {
+      "name": "Crayfish (2pcs)",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$25"
+        },
+        {
+          "label": "Large",
+          "price": "$30"
+        }
+      ]
+    },
+    {
+      "name": "Chilli Crab",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$46"
+        },
+        {
+          "label": "Medium",
+          "price": "$50"
+        },
+        {
+          "label": "Large",
+          "price": "$54"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$58"
+        }
+      ]
+    },
+    {
+      "name": "Black Pepper Crab",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$46"
+        },
+        {
+          "label": "Medium",
+          "price": "$50"
+        },
+        {
+          "label": "Large",
+          "price": "$54"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$58"
+        }
+      ]
+    },
+    {
+      "name": "Salted Egg Crab",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$50"
+        },
+        {
+          "label": "Medium",
+          "price": "$54"
+        },
+        {
+          "label": "Large",
+          "price": "$58"
+        }
+      ]
+    },
+    {
+      "name": "Cereal Prawn",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$25"
+        },
+        {
+          "label": "Medium",
+          "price": "$30"
+        },
+        {
+          "label": "Large",
+          "price": "$35"
+        }
+      ]
+    },
+    {
+      "name": "Butter Prawn",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$25"
+        },
+        {
+          "label": "Medium",
+          "price": "$30"
+        },
+        {
+          "label": "Large",
+          "price": "$35"
+        }
+      ]
+    },
+    {
+      "name": "Sambal Prawn",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$25"
+        },
+        {
+          "label": "Medium",
+          "price": "$30"
+        },
+        {
+          "label": "Large",
+          "price": "$35"
+        }
+      ]
+    },
+    {
+      "name": "Steamed Fish",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$42"
+        },
+        {
+          "label": "Large",
+          "price": "$46"
+        }
+      ]
+    },
+    {
+      "name": "Steamed Red Grouper",
+      "sizes": [
+        {
+          "label": "Regular",
+          "price": "$46"
+        },
+        {
+          "label": "Large",
+          "price": "$50"
+        }
+      ]
+    }
+  ],
+  "tags": [],
+  "notes": "BEST SELLER RECOMMENDED"
+}
+INFO:hawkerboost:[parse-image] Final result: type=menu, dishes=11, tags=[]
+INFO:     127.0.0.1:61308 - "POST /api/parse-image HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 1] Attempt 1/3 succeeded — model=google/gemini-3.1-pro-preview, response_length=263 chars
+INFO:hawkerboost:[parse-image Step 1] Response:
+10 BBQ SAMBAL STINGRAY | $14/18/22
+11 GRILLED FISH | $36/38/42/46
+12 SAMBAL SQUID | $14/18/22
+13 BABY SQUID | $18/25
+14 CALAMARI (* ADD SALTED EGG +$3) | $18/25
+15 SALAD YOU TIAO | $14/$22
+16 CHUT CHUT | $14/18/22
+17 GONG GONG | $14/18/22
+18 CLAMS / LALA | $14/18
+INFO:hawkerboost:[parse-image] Step 2: Structuring with GPT-5.4-mini
+INFO:hawkerboost:[parse-image Step 2] Calling model=openai/gpt-5.4-mini (timeout=60s)
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 — model=openai/gpt-5.4-mini
+INFO:httpx:HTTP Request: POST https://api.gmi-serving.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:hawkerboost:[parse-image Step 2] Attempt 1/3 succeeded — model=openai/gpt-5.4-mini, response_length=2612 chars
+INFO:hawkerboost:[parse-image Step 2] Response:
+{
+  "image_type": "menu",
+  "stall_name": null,
+  "address": null,
+  "cuisine_type": "seafood",
+  "description": null,
+  "dishes": [
+    {
+      "name": "BBQ Sambal Stingray",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Grilled Fish",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$36"
+        },
+        {
+          "label": "Medium",
+          "price": "$38"
+        },
+        {
+          "label": "Large",
+          "price": "$42"
+        },
+        {
+          "label": "Extra Large",
+          "price": "$46"
+        }
+      ]
+    },
+    {
+      "name": "Sambal Squid",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Baby Squid",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$25"
+        }
+      ]
+    },
+    {
+      "name": "Calamari",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$25"
+        }
+      ]
+    },
+    {
+      "name": "Salad You Tiao",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Chut Chut",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Gong Gong",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Medium",
+          "price": "$18"
+        },
+        {
+          "label": "Large",
+          "price": "$22"
+        }
+      ]
+    },
+    {
+      "name": "Clams / Lala",
+      "sizes": [
+        {
+          "label": "Small",
+          "price": "$14"
+        },
+        {
+          "label": "Large",
+          "price": "$18"
+        }
+      ]
+    }
+  ],
+  "tags": [],
+  "notes": "Calamari can be added with salted egg for an additional $3."
+}
+INFO:hawkerboost:[parse-image] Final result: type=menu, dishes=9, tags=[]
+INFO:     127.0.0.1:61310 - "POST /api/parse-image HTTP/1.1" 200 OK

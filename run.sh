@@ -9,7 +9,7 @@ fi
 trap 'kill 0' EXIT
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-LOGFILE="$ROOT/hawkerboost.log"
+LOGFILE="$ROOT/makanmap.log"
 
 if [ -f "$ROOT/.env" ]; then
   set -a
@@ -24,7 +24,7 @@ echo "Starting frontend on http://localhost:3000 ..."
 (cd "$ROOT/frontend" && python3 -m http.server 3000) > /dev/null 2>&1 &
 
 echo ""
-echo "HawkerBoost is running! Open http://localhost:3000"
+echo "MakanMap is running! Open http://localhost:3000"
 echo "Logs: $LOGFILE"
 echo ""
 echo "To view logs:  tail -f $LOGFILE"
