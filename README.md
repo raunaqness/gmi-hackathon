@@ -6,6 +6,8 @@
 
 Built at the GMI Cloud x Z.ai Singapore Hackathon 2025.
 
+Made by [Raunaq](https://www.linkedin.com/in/gurraunaqsingh/) and [Viktoria](https://www.linkedin.com/in/viktoria-b-0a41aaa/)
+
 ---
 
 ## The Problem
