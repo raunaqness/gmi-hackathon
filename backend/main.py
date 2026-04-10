@@ -140,7 +140,7 @@ async def parse_image(req: ParseImageRequest):
                 ),
             },
         ],
-        "max_tokens": 2000,
+        "max_completion_tokens": 2000,
         "temperature": 0,
     }
 
