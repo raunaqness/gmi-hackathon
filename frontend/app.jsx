@@ -294,8 +294,12 @@ function App() {
         {dishes.length === 0 ? (
           <p className="text-xs text-muted mb-3">No dishes yet. Upload a menu photo or add manually.</p>
         ) : (
-          dishes.map((dish, i) => (
-            <div key={i} className="mb-3">
+          dishes.map((dish, i) => {
+            const hasMissingPrice =
+              (!dish.sizes || dish.sizes.length === 0) && !dish.price
+              || (dish.sizes && dish.sizes.some((s) => !s.price || s.price.trim() === ""));
+            return (
+            <div key={i} className={`mb-3 ${hasMissingPrice ? "rounded-lg border-l-4 border-amber-400 pl-2" : ""}`}>
               <div className="flex gap-2">
                 <input
                   value={dish.name}
@@ -315,7 +319,7 @@ function App() {
                       next[i] = { ...next[i], price: e.target.value };
                       setDishes(next);
                     }}
-                    className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    className={`w-24 border rounded-lg px-3 py-2 text-sm ${hasMissingPrice ? "border-amber-400 bg-amber-50" : "border-gray-300"}`}
                     placeholder="$0.00"
                   />
                 )}
@@ -326,10 +330,15 @@ function App() {
                   &#10005;
                 </button>
               </div>
+              {hasMissingPrice && (
+                <p className="text-xs text-amber-600 mt-1 font-medium">Price missing — please add it</p>
+              )}
               {dish.sizes?.length > 0 && (
                 <div className="ml-2 mt-1 flex flex-wrap gap-2">
-                  {dish.sizes.map((s, si) => (
-                    <span key={si} className="inline-flex items-center gap-1 bg-orange-50 border border-orange-200 text-orange-700 rounded-full px-2 py-0.5 text-xs">
+                  {dish.sizes.map((s, si) => {
+                    const sizeEmpty = !s.price || s.price.trim() === "";
+                    return (
+                    <span key={si} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${sizeEmpty ? "bg-amber-50 border border-amber-300 text-amber-700" : "bg-orange-50 border border-orange-200 text-orange-700"}`}>
                       <span className="font-medium">{s.label}:</span>
                       <input
                         value={s.price}
@@ -340,14 +349,17 @@ function App() {
                           next[i] = { ...next[i], sizes: newSizes };
                           setDishes(next);
                         }}
-                        className="w-14 bg-transparent text-xs text-orange-700 outline-none"
+                        className={`w-14 bg-transparent text-xs outline-none ${sizeEmpty ? "text-amber-700 placeholder-amber-400" : "text-orange-700"}`}
+                        placeholder="$?"
                       />
                     </span>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
-          ))
+            );
+          })
         )}
         <button
           onClick={() => setDishes([...dishes, { name: "", price: "" }])}

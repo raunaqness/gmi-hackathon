@@ -56,8 +56,10 @@ Both steps use a retry mechanism (3 attempts, 2/4/8s backoff) with extended time
   "cuisine_type": "string | null",
   "description": "string | null",
   "dishes": [
-    { "name": "Char Kway Teow", "price": "$4.00" },
-    { "name": "Fried Rice", "price": "", "sizes": [
+    { "name": "Char Kway Teow", "sizes": [
+      { "label": "Regular", "price": "$4.00" }
+    ]},
+    { "name": "Fried Rice", "sizes": [
       { "label": "Small", "price": "$8" },
       { "label": "Medium", "price": "$10" },
       { "label": "Large", "price": "$12" }
@@ -150,6 +152,10 @@ Generates marketing copy in 3 languages for 3 platforms.
 4. **Frontend state as the "DB"** — No database, no persistence. All stall profile data lives in React useState. Sufficient for a single-session demo tool.
 
 5. **Singapore-specific intelligence** — Price shorthand parsing ($12/15/20 = portion sizes), dietary tag detection (Halal, No Pork No Lard, MUIS), Michelin recognition. These are domain-specific features that make the tool genuinely useful for hawker stall owners.
+
+6. **Consistent dish pricing structure** — All dishes use a `sizes` array: single-price items get `[{"label": "Regular", "price": "$X"}]`, two prices get Regular/Large, three get Small/Medium/Large. This unified structure simplifies frontend rendering and editing.
+
+7. **Missing price indicators** — When OCR fails to extract a price, the frontend highlights the dish with an amber border and "Price missing — please add it" prompt, guiding the user to fill in gaps manually.
 
 ## Running
 

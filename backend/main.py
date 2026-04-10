@@ -162,6 +162,8 @@ async def parse_image(req: ParseImageRequest):
                             "OCR this image of a food stall or restaurant in Singapore.\n"
                             "Output the restaurant/stall name if visible.\n"
                             "For each dish, output one line: DISH NAME | PRICE\n"
+                            "IMPORTANT: Whenever you see a $ symbol or any number near a dish, "
+                            "that is the price — always include it. Never skip prices.\n"
                             "For prices with slashes like '$12/15/20', write them exactly as shown.\n"
                             "Also note any visible tags, certifications, or stickers "
                             "(Halal, Michelin, No Pork No Lard, etc.) as separate lines.\n"
