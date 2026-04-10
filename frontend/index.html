@@ -14,7 +14,10 @@
             secondary: '#1A2E5A',
             surface: '#FFF8F3',
             muted: '#888888',
-          }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
         }
       }
     }
@@ -22,8 +25,13 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
-    body { background-color: #FFF8F3; }
+    body { background-color: #FFF8F3; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 1s linear infinite; }
+    input, select, textarea { font-family: 'Inter', sans-serif; }
   </style>
 </head>
 <body>
