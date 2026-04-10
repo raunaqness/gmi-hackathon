@@ -39,7 +39,8 @@ async def parse_image(req: ParseImageRequest):
     if not GMI_API_KEY:
         raise HTTPException(status_code=500, detail="GMI_API_KEY not set")
 
-    payload = {
+    # --- Step 1: Gemini vision — free-form analysis (no JSON requirement) ---
+    vision_payload = {
         "model": "google/gemini-3.1-pro-preview",
         "messages": [
             {
@@ -54,107 +55,133 @@ async def parse_image(req: ParseImageRequest):
                     {
                         "type": "text",
                         "text": (
-                            "You are analyzing a photo related to a food stall or restaurant.\n"
-                            "First, classify the image as one of: \"menu\", \"stall\", \"food\", or \"other\".\n\n"
-                            "Then extract ALL relevant information you can see.\n\n"
-                            "IMPORTANT — Menu price parsing rules:\n"
-                            "Prices on hawker/restaurant menus are often written in shorthand for portion sizes:\n"
-                            '- "$12/15/20" means Small: $12, Medium: $15, Large: $20\n'
-                            '- "$5/$8" means Regular: $5, Large: $8\n'
-                            '- "$3.50" means a single price\n'
-                            '- "8/10/12" (no $ sign) still means prices in dollars\n'
-                            "When you see multiple prices separated by / for one dish, split them into portion sizes.\n\n"
-                            "Return a JSON object with these fields (include only fields you can extract):\n"
-                            '- "image_type": one of "menu", "stall", "food", "other"\n'
-                            '- "stall_name": name of the stall/restaurant if visible\n'
-                            '- "address": address or location if visible (e.g. "Tiong Bahru Market, Stall #02-05")\n'
-                            '- "cuisine_type": inferred cuisine (e.g. "Chinese", "Malay", "Indian", "Western")\n'
-                            '- "description": any tagline, slogan, or description visible\n'
-                            '- "dishes": array of dish objects. Each dish has:\n'
-                            '    - "name": string\n'
-                            '    - "price": string (single price like "$3.50", or empty if multiple sizes)\n'
-                            '    - "sizes": array of {"label": string, "price": string} ONLY if multiple portion sizes exist\n'
-                            '      e.g. [{"label": "Small", "price": "$12"}, {"label": "Medium", "price": "$15"}, {"label": "Large", "price": "$20"}]\n'
-                            '      For 2 prices use "Regular" and "Large". For 3 use "Small", "Medium", "Large".\n'
-                            '      Omit this field if there is only a single price.\n'
-                            '- "tags": array of strings — dietary/certification tags visible or implied.\n'
-                            '  Common Singapore hawker tags to look for:\n'
-                            '  "Halal", "No Pork No Lard", "Halal-certified", "Muslim-owned",\n'
-                            '  "Vegetarian", "Vegan", "No MSG", "Organic", "Kosher",\n'
-                            '  "Michelin Bib Gourmand", "Michelin Star", "Michelin Selected".\n'
-                            '  Look for: Halal/MUIS certification logos, "No Pork" signs,\n'
-                            '  Michelin guide stickers/plaques (red Michelin logo), Bib Gourmand stickers.\n'
-                            '  Only include tags you can actually see evidence of in the image.\n'
-                            '- "notes": any other useful info (opening hours, phone number, specialties mentioned)\n\n'
-                            "Only return valid JSON. No explanation."
+                            "You are analyzing a photo related to a food stall or restaurant in Singapore.\n"
+                            "Describe everything you see in detail. Include:\n\n"
+                            "1. What type of image is this? (menu, stall front/signage, food photo, or other)\n"
+                            "2. Stall/restaurant name if visible\n"
+                            "3. Address or location if visible\n"
+                            "4. Cuisine type\n"
+                            "5. ALL menu items and their prices. IMPORTANT: prices like '$12/15/20' or '8/10/12' "
+                            "mean different portion sizes (small/medium/large). List each size separately.\n"
+                            "6. Any dietary tags: Halal, No Pork No Lard, MUIS certification, Muslim-owned, "
+                            "Vegetarian, Vegan, No MSG\n"
+                            "7. Michelin recognition: Michelin Star, Bib Gourmand, Michelin Selected "
+                            "(look for red Michelin stickers/plaques)\n"
+                            "8. Any other info: opening hours, phone numbers, slogans, specialties\n\n"
+                            "Be thorough. List every dish and every price you can read."
                         ),
                     },
                 ],
             }
         ],
-        "max_tokens": 1500,
+        "max_tokens": 2000,
     }
 
-    max_retries = 3
-    last_error = None
+    log.info("[parse-image] Step 1: Sending image to Gemini (image_size=%d bytes)", len(req.image_base64))
 
-    for attempt in range(1, max_retries + 1):
-        log.info("[parse-image] Attempt %d/%d — sending to GMI API (model=%s, image_size=%d bytes)",
-                 attempt, max_retries, payload["model"], len(req.image_base64))
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{GMI_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {GMI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=vision_payload,
+            )
+    except httpx.TimeoutException:
+        log.error("[parse-image] Step 1 timed out")
+        raise HTTPException(status_code=502, detail="Vision API timed out")
 
-        try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(
-                    f"{GMI_BASE_URL}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {GMI_API_KEY}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                )
+    if resp.status_code != 200:
+        log.error("[parse-image] Step 1 failed: status=%d, body=%s", resp.status_code, resp.text)
+        raise HTTPException(status_code=502, detail=f"Vision API error: {resp.text}")
 
-            log.info("[parse-image] Attempt %d — status=%d", attempt, resp.status_code)
+    try:
+        vision_text = resp.json()["choices"][0]["message"]["content"]
+    except (KeyError, IndexError) as e:
+        log.error("[parse-image] Step 1 unexpected response: %s", resp.text)
+        raise HTTPException(status_code=502, detail=f"Unexpected vision API response: {e}")
 
-            if resp.status_code != 200:
-                last_error = f"GMI API error (HTTP {resp.status_code}): {resp.text}"
-                log.warning("[parse-image] Attempt %d failed: %s", attempt, last_error)
-                if attempt < max_retries:
-                    await asyncio.sleep(2 * attempt)
-                continue
+    log.info("[parse-image] Step 1 done. Gemini output (%d chars):\n%s", len(vision_text), vision_text)
 
-            raw = resp.json()
-            content = raw["choices"][0]["message"]["content"]
-            log.info("[parse-image] Raw LLM content:\n%s", content)
-            content = content.strip()
-            if content.startswith("```"):
-                content = content.split("\n", 1)[1]
-                content = content.rsplit("```", 1)[0]
-            parsed = json.loads(content)
-            log.info("[parse-image] Parsed result: type=%s, dishes=%d, tags=%s",
-                     parsed.get("image_type"), len(parsed.get("dishes", [])), parsed.get("tags", []))
-            return parsed
+    # --- Step 2: GPT-5.4-mini — structure into clean JSON ---
+    structure_payload = {
+        "model": "openai/gpt-5.4-mini",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You convert unstructured text descriptions of food stalls into structured JSON. Always return valid JSON only, no explanation, no markdown.",
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Here is a description of a food stall image. Convert it into this exact JSON structure.\n"
+                    "Include only fields that have actual data — omit fields with no info.\n\n"
+                    "Required JSON schema:\n"
+                    "{\n"
+                    '  "image_type": "menu" | "stall" | "food" | "other",\n'
+                    '  "stall_name": string or null,\n'
+                    '  "address": string or null,\n'
+                    '  "cuisine_type": string or null,\n'
+                    '  "description": string or null,\n'
+                    '  "dishes": [{ "name": string, "price": string, "sizes": [{"label": string, "price": string}] }],\n'
+                    '  "tags": [string],\n'
+                    '  "notes": string or null\n'
+                    "}\n\n"
+                    "Rules:\n"
+                    '- For dishes with multiple portion sizes, leave "price" empty and populate "sizes" array.\n'
+                    '  Use "Small"/"Medium"/"Large" for 3 sizes, "Regular"/"Large" for 2 sizes.\n'
+                    '- For single-price dishes, put the price in "price" and omit "sizes".\n'
+                    '- Tags should include dietary/certification info: Halal, No Pork No Lard, Michelin Star, '
+                    "Bib Gourmand, Michelin Selected, Vegetarian, etc.\n\n"
+                    f"--- IMAGE DESCRIPTION ---\n{vision_text}\n--- END ---\n\n"
+                    "Return valid JSON only."
+                ),
+            },
+        ],
+        "max_tokens": 2000,
+        "temperature": 0,
+    }
 
-        except httpx.TimeoutException:
-            last_error = f"Request timed out (attempt {attempt})"
-            log.warning("[parse-image] %s", last_error)
-            if attempt < max_retries:
-                await asyncio.sleep(2 * attempt)
-            continue
-        except (KeyError, IndexError) as e:
-            last_error = f"Unexpected API response: {e}"
-            log.error("[parse-image] %s\nFull response: %s", last_error, resp.text)
-            if attempt < max_retries:
-                await asyncio.sleep(2 * attempt)
-            continue
-        except json.JSONDecodeError as e:
-            last_error = f"LLM returned invalid JSON: {e}\nContent: {content}"
-            log.error("[parse-image] %s", last_error)
-            if attempt < max_retries:
-                await asyncio.sleep(2 * attempt)
-            continue
+    log.info("[parse-image] Step 2: Sending to GPT-5.4-mini for JSON structuring")
 
-    log.error("[parse-image] All %d attempts failed. Last error: %s", max_retries, last_error)
-    raise HTTPException(status_code=502, detail=f"Failed after {max_retries} attempts: {last_error}")
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp2 = await client.post(
+                f"{GMI_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {GMI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=structure_payload,
+            )
+    except httpx.TimeoutException:
+        log.error("[parse-image] Step 2 timed out")
+        raise HTTPException(status_code=502, detail="JSON structuring timed out")
+
+    if resp2.status_code != 200:
+        log.error("[parse-image] Step 2 failed: status=%d, body=%s", resp2.status_code, resp2.text)
+        raise HTTPException(status_code=502, detail=f"Structuring API error: {resp2.text}")
+
+    try:
+        content = resp2.json()["choices"][0]["message"]["content"]
+        log.info("[parse-image] Step 2 raw output:\n%s", content)
+        content = content.strip()
+        if content.startswith("```"):
+            content = content.split("\n", 1)[1]
+            content = content.rsplit("```", 1)[0]
+        parsed = json.loads(content)
+        log.info("[parse-image] Final result: type=%s, dishes=%d, tags=%s",
+                 parsed.get("image_type"), len(parsed.get("dishes", [])), parsed.get("tags", []))
+    except (KeyError, IndexError) as e:
+        log.error("[parse-image] Step 2 unexpected response: %s", resp2.text)
+        raise HTTPException(status_code=502, detail=f"Unexpected structuring response: {e}")
+    except json.JSONDecodeError as e:
+        log.error("[parse-image] Step 2 JSON parse failed: %s\nContent:\n%s", e, content)
+        raise HTTPException(status_code=502, detail=f"Failed to parse structured JSON: {e}")
+
+    return parsed
 
 
 # --- Task 3: Copy Generation ---
