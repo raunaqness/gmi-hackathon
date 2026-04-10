@@ -1,9 +1,14 @@
 import os
 import json
+import logging
+import asyncio
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("hawkerboost")
 
 app = FastAPI()
 
@@ -90,30 +95,66 @@ async def parse_image(req: ParseImageRequest):
         "max_tokens": 1500,
     }
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            f"{GMI_BASE_URL}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {GMI_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
-        )
+    max_retries = 3
+    last_error = None
 
-    if resp.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"GMI API error: {resp.text}")
+    for attempt in range(1, max_retries + 1):
+        log.info("[parse-image] Attempt %d/%d — sending to GMI API (model=%s, image_size=%d bytes)",
+                 attempt, max_retries, payload["model"], len(req.image_base64))
 
-    try:
-        content = resp.json()["choices"][0]["message"]["content"]
-        content = content.strip()
-        if content.startswith("```"):
-            content = content.split("\n", 1)[1]
-            content = content.rsplit("```", 1)[0]
-        parsed = json.loads(content)
-    except (KeyError, IndexError, json.JSONDecodeError) as e:
-        raise HTTPException(status_code=502, detail=f"Failed to parse API response: {e}")
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(
+                    f"{GMI_BASE_URL}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {GMI_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
 
-    return parsed
+            log.info("[parse-image] Attempt %d — status=%d", attempt, resp.status_code)
+
+            if resp.status_code != 200:
+                last_error = f"GMI API error (HTTP {resp.status_code}): {resp.text}"
+                log.warning("[parse-image] Attempt %d failed: %s", attempt, last_error)
+                if attempt < max_retries:
+                    await asyncio.sleep(2 * attempt)
+                continue
+
+            raw = resp.json()
+            content = raw["choices"][0]["message"]["content"]
+            log.info("[parse-image] Raw LLM content:\n%s", content)
+            content = content.strip()
+            if content.startswith("```"):
+                content = content.split("\n", 1)[1]
+                content = content.rsplit("```", 1)[0]
+            parsed = json.loads(content)
+            log.info("[parse-image] Parsed result: type=%s, dishes=%d, tags=%s",
+                     parsed.get("image_type"), len(parsed.get("dishes", [])), parsed.get("tags", []))
+            return parsed
+
+        except httpx.TimeoutException:
+            last_error = f"Request timed out (attempt {attempt})"
+            log.warning("[parse-image] %s", last_error)
+            if attempt < max_retries:
+                await asyncio.sleep(2 * attempt)
+            continue
+        except (KeyError, IndexError) as e:
+            last_error = f"Unexpected API response: {e}"
+            log.error("[parse-image] %s\nFull response: %s", last_error, resp.text)
+            if attempt < max_retries:
+                await asyncio.sleep(2 * attempt)
+            continue
+        except json.JSONDecodeError as e:
+            last_error = f"LLM returned invalid JSON: {e}\nContent: {content}"
+            log.error("[parse-image] %s", last_error)
+            if attempt < max_retries:
+                await asyncio.sleep(2 * attempt)
+            continue
+
+    log.error("[parse-image] All %d attempts failed. Last error: %s", max_retries, last_error)
+    raise HTTPException(status_code=502, detail=f"Failed after {max_retries} attempts: {last_error}")
 
 
 # --- Task 3: Copy Generation ---
