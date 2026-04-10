@@ -9,6 +9,7 @@ function App() {
   const [cuisineType, setCuisineType] = useState("");
   const [stallDesc, setStallDesc] = useState("");
   const [dishes, setDishes] = useState([]);
+  const [tags, setTags] = useState([]);
   const [notes, setNotes] = useState("");
 
   // Upload state
@@ -68,6 +69,11 @@ function App() {
       if (data.dishes && data.dishes.length > 0) {
         setDishes((prev) => [...prev, ...data.dishes]);
       }
+
+      // Merge tags (deduplicate)
+      if (data.tags && data.tags.length > 0) {
+        setTags((prev) => [...new Set([...prev, ...data.tags])]);
+      }
     } catch (err) {
       setError("Couldn't analyze this image. Try another photo.");
       setUploadedImages((prev) =>
@@ -100,7 +106,7 @@ function App() {
           stall_name: stallName,
           cuisine_type: cuisineType,
           dishes: validDishes,
-          description: [stallDesc, address, notes].filter(Boolean).join(". "),
+          description: [stallDesc, address, notes, tags.length ? "Tags: " + tags.join(", ") : ""].filter(Boolean).join(". "),
         }),
       });
       if (!resp.ok) throw new Error(await resp.text());
@@ -222,6 +228,34 @@ function App() {
           maxLength={200}
         />
 
+        {tags.length > 0 && (
+          <div className="mt-3">
+            <label className="block text-xs font-medium text-muted mb-1">Tags</label>
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag, i) => {
+                const isSpecial = tag.toLowerCase().includes("michelin");
+                const isHalal = tag.toLowerCase().includes("halal") || tag.toLowerCase().includes("no pork");
+                return (
+                  <span
+                    key={i}
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      isSpecial ? "bg-red-100 text-red-700 border border-red-200" :
+                      isHalal ? "bg-green-100 text-green-700 border border-green-200" :
+                      "bg-purple-100 text-purple-700 border border-purple-200"
+                    }`}
+                  >
+                    {isSpecial ? "\u2b50" : isHalal ? "\u2714" : ""} {tag}
+                    <button
+                      onClick={() => setTags(tags.filter((_, j) => j !== i))}
+                      className="ml-0.5 opacity-50 hover:opacity-100"
+                    >&#10005;</button>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {notes && (
           <div className="mt-3 bg-blue-50 rounded-lg px-3 py-2">
             <p className="text-xs font-medium text-blue-700 mb-1">AI Notes</p>
@@ -240,33 +274,57 @@ function App() {
           <p className="text-xs text-muted mb-3">No dishes yet. Upload a menu photo or add manually.</p>
         ) : (
           dishes.map((dish, i) => (
-            <div key={i} className="flex gap-2 mb-2">
-              <input
-                value={dish.name}
-                onChange={(e) => {
-                  const next = [...dishes];
-                  next[i] = { ...next[i], name: e.target.value };
-                  setDishes(next);
-                }}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                placeholder="Dish name"
-              />
-              <input
-                value={dish.price}
-                onChange={(e) => {
-                  const next = [...dishes];
-                  next[i] = { ...next[i], price: e.target.value };
-                  setDishes(next);
-                }}
-                className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                placeholder="$0.00"
-              />
-              <button
-                onClick={() => setDishes(dishes.filter((_, j) => j !== i))}
-                className="text-red-400 text-sm px-2"
-              >
-                &#10005;
-              </button>
+            <div key={i} className="mb-3">
+              <div className="flex gap-2">
+                <input
+                  value={dish.name}
+                  onChange={(e) => {
+                    const next = [...dishes];
+                    next[i] = { ...next[i], name: e.target.value };
+                    setDishes(next);
+                  }}
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  placeholder="Dish name"
+                />
+                {!dish.sizes?.length && (
+                  <input
+                    value={dish.price || ""}
+                    onChange={(e) => {
+                      const next = [...dishes];
+                      next[i] = { ...next[i], price: e.target.value };
+                      setDishes(next);
+                    }}
+                    className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    placeholder="$0.00"
+                  />
+                )}
+                <button
+                  onClick={() => setDishes(dishes.filter((_, j) => j !== i))}
+                  className="text-red-400 text-sm px-2"
+                >
+                  &#10005;
+                </button>
+              </div>
+              {dish.sizes?.length > 0 && (
+                <div className="ml-2 mt-1 flex flex-wrap gap-2">
+                  {dish.sizes.map((s, si) => (
+                    <span key={si} className="inline-flex items-center gap-1 bg-orange-50 border border-orange-200 text-orange-700 rounded-full px-2 py-0.5 text-xs">
+                      <span className="font-medium">{s.label}:</span>
+                      <input
+                        value={s.price}
+                        onChange={(e) => {
+                          const next = [...dishes];
+                          const newSizes = [...next[i].sizes];
+                          newSizes[si] = { ...newSizes[si], price: e.target.value };
+                          next[i] = { ...next[i], sizes: newSizes };
+                          setDishes(next);
+                        }}
+                        className="w-14 bg-transparent text-xs text-orange-700 outline-none"
+                      />
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))
         )}
