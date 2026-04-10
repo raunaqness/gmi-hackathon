@@ -42,8 +42,10 @@ Analyzes an uploaded photo using a two-step AI pipeline.
 **Request:** `{ "image_base64": string }`
 
 **Pipeline:**
-1. **Gemini 3.1 Pro** — Analyzes the image in free-form text. Describes stall name, dishes, prices, tags, Michelin status, etc. No JSON requirement.
-2. **GPT-5.4-mini** — Takes Gemini's description and structures it into clean JSON. Temperature=0 for deterministic output.
+1. **Gemini 3.1 Pro** — OCR extraction. Reads all visible text from the image (stall name, dish names, prices, tags, certifications) in a flat `DISH NAME | PRICE` format. Temperature=0, no interpretation.
+2. **GPT-5.4-mini** — Takes the raw OCR text and structures it into clean JSON. Temperature=0 for deterministic output.
+
+Both steps use a retry mechanism (3 attempts, 2/4/8s backoff) with extended timeouts (120s vision, 60s structuring).
 
 **Response:**
 ```json
@@ -102,10 +104,10 @@ Generates marketing copy in 3 languages for 3 platforms.
                          │    FastAPI Backend        │
                          │                          │
                          │  Step 1: Gemini 3.1 Pro  │──> GMI Cloud (vision)
-                         │    (free-form analysis)   │
+                         │    (OCR text extraction)  │
                          │                          │
                          │  Step 2: GPT-5.4-mini    │──> GMI Cloud (text)
-                         │    (JSON structuring)     │
+                         │    (interpret + JSON)     │
                          └──────────┬───────────────┘
                                     │ structured JSON
                                     ▼
@@ -137,7 +139,9 @@ Generates marketing copy in 3 languages for 3 platforms.
 
 ## Key Design Decisions
 
-1. **Two-step vision pipeline** — Gemini is great at understanding images but unreliable at producing valid JSON. GPT-5.4-mini is cheap and deterministic at JSON structuring. Splitting the work eliminated JSON parse errors.
+1. **Two-step vision pipeline** — Gemini does pure OCR (extract text exactly as shown), GPT-5.4-mini does all the interpretation and JSON structuring. Splitting OCR from structuring eliminated hallucinated data and JSON parse errors. Temperature=0 on both steps for deterministic output.
+
+2. **Retry with backoff** — All API calls retry up to 3 times with 2/4/8s backoff. Vision timeout is 120s, structuring 60s, copy generation 90s. Handles intermittent GMI Cloud timeouts gracefully.
 
 2. **Cumulative profile (merge, not replace)** — Each photo upload adds to the stall profile rather than overwriting it. Stall name fills once; dishes always append. Users can upload a stall photo, then a menu photo, and the profile builds up.
 
