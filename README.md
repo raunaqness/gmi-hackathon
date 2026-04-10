@@ -46,6 +46,7 @@ MakanMap is a two-sided platform: stall owners snap a menu photo to go live in m
 - Detects Halal, No Pork No Lard, MUIS certification, Michelin Bib Gourmand
 - Highlights missing prices so users can fill them in
 - No accounts, no installs — works on any mobile browser
+- Generates the marketing material for immideate publishing on social media platforms (coming soon)
 
 ## Tech Stack
 
